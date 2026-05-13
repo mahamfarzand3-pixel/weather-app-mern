@@ -14,23 +14,53 @@ function App() {
         return;
       }
 
-      // Fetch current weather
+      // 1. Fetch Today's Weather
       const weatherRes = await axios.get(`http://localhost:5000/weather/${city}`);
       setWeather(weatherRes.data);
 
-      // Fetch forecast data
+      // 2. Fetch Forecast
       const forecastRes = await axios.get(`http://localhost:5000/forecast/${city}`);
       
-      // Additional safety filter: Ensure only 5 unique days are shown
-      const cleanForecast = forecastRes.data.filter(item => item.dt_txt.includes("12:00:00")).slice(0, 5);
-      setForecast(cleanForecast);
+      // Local System ki date nikalne ka sahi tareeqa (YYYY-MM-DD)
+      const now = new Date();
+      const localToday = now.getFullYear() + '-' + 
+                         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(now.getDate()).padStart(2, '0');
 
+      const dailyData = new Map();
+
+      forecastRes.data.forEach(item => {
+        // API se date nikalna (e.g., "2026-05-14")
+        const datePart = item.dt_txt.split(' ')[0];
+        
+        // Agar yeh date "Aaj" nahi hai, tabhi cards mein dalna hai
+        if (datePart !== localToday) {
+          // Agar us din ki midday (12:00) entry mil jaye to wo best hai
+          if (!dailyData.has(datePart) || item.dt_txt.includes("12:00:00")) {
+            dailyData.set(datePart, item);
+          }
+        }
+      });
+
+      // Map ko array mein convert karke sort karna aur 5 din nikalna
+      const finalForecast = Array.from(dailyData.values())
+        .sort((a, b) => new Date(a.dt_txt.replace(/-/g, "/")) - new Date(b.dt_txt.replace(/-/g, "/")))
+        .slice(0, 5);
+      
+      setForecast(finalForecast);
       setError('');
     } catch (err) {
       setError('City not found or server error');
       setWeather(null);
       setForecast([]);
     }
+  };
+
+  // Din ka naam nikalne ka function (Fixed for Timezone)
+  const getDayName = (dateString) => {
+    const [year, month, day] = dateString.split(' ')[0].split('-');
+    const date = new Date(year, month - 1, day); // Manual date creation (safe)
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
   };
 
   const getBackgroundStyle = () => {
@@ -42,7 +72,7 @@ function App() {
   };
 
   return (
-    <div style={{ background: getBackgroundStyle(), minHeight: '100vh', textAlign: 'center', paddingTop: '50px', color: '#fff', paddingBottom: '50px' }}>
+    <div style={{ background: getBackgroundStyle(), minHeight: '100vh', textAlign: 'center', paddingTop: '50px', color: '#fff', paddingBottom: '50px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Weather App</h1>
       
       <div style={{ marginBottom: '30px' }}>
@@ -51,36 +81,34 @@ function App() {
           placeholder="Enter city..." 
           value={city} 
           onChange={(e) => setCity(e.target.value)}
-          style={{ padding: '12px', borderRadius: '25px', border: 'none', width: '250px', color: '#000' }}
+          style={{ padding: '12px', borderRadius: '25px', border: 'none', width: '250px', color: '#000', outline: 'none' }}
         />
-        <button onClick={getAllWeather} style={{ padding: '12px 25px', marginLeft: '10px', borderRadius: '25px', cursor: 'pointer', border: 'none', fontWeight: 'bold' }}>
+        <button onClick={getAllWeather} style={{ padding: '12px 25px', marginLeft: '10px', borderRadius: '25px', cursor: 'pointer', border: 'none', fontWeight: 'bold', backgroundColor: '#fff', color: '#333' }}>
           Search
         </button>
       </div>
 
-      {error && <p style={{ color: 'yellow' }}>{error}</p>}
+      {error && <p style={{ color: '#ffeb3b', fontWeight: 'bold' }}>{error}</p>}
 
-      {/* Current Weather Card */}
       {weather && (
-        <div style={{ padding: '30px', borderRadius: '20px', backgroundColor: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', display: 'inline-block', marginBottom: '40px', minWidth: '300px' }}>
+        <div style={{ padding: '30px', borderRadius: '20px', backgroundColor: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', display: 'inline-block', marginBottom: '40px', minWidth: '320px', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)' }}>
           <h2>{weather.name} (Today)</h2>
           <p style={{ fontSize: '60px', fontWeight: 'bold', margin: '10px 0' }}>{Math.round(weather.main.temp)}°C</p>
-          <p style={{ textTransform: 'capitalize' }}>{weather.weather[0].description}</p>
+          <p style={{ textTransform: 'capitalize', fontSize: '18px' }}>{weather.weather[0].description}</p>
         </div>
       )}
 
-      {/* 5 Day Forecast Section */}
       {forecast.length > 0 && (
         <div style={{ marginTop: '20px' }}>
           <h3>Next 5 Days Forecast</h3>
-          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'nowrap', gap: '15px', padding: '20px', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', padding: '20px', flexWrap: 'wrap' }}>
             {forecast.map((item, index) => (
-              <div key={index} style={{ padding: '20px', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '15px', minWidth: '120px' }}>
-                <p style={{ fontSize: '16px', margin: '0' }}>
-                  {new Date(item.dt_txt).toLocaleDateString('en-GB', { weekday: 'short' })}
+              <div key={index} style={{ padding: '20px', backgroundColor: 'rgba(255, 255, 255, 0.15)', borderRadius: '15px', minWidth: '130px', backdropFilter: 'blur(5px)' }}>
+                <p style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>
+                  {getDayName(item.dt_txt)}
                 </p>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '10px 0' }}>{Math.round(item.main.temp)}°C</p>
-                <p style={{ fontSize: '14px' }}>{item.weather[0].main}</p>
+                <p style={{ fontSize: '28px', fontWeight: 'bold', margin: '10px 0' }}>{Math.round(item.main.temp)}°C</p>
+                <p style={{ fontSize: '14px', textTransform: 'capitalize' }}>{item.weather[0].main}</p>
               </div>
             ))}
           </div>
