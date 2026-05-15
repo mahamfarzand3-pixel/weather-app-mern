@@ -7,134 +7,157 @@ function App() {
   const [forecast, setForecast] = useState([]);
   const [error, setError] = useState('');
   const [isCelsius, setIsCelsius] = useState(true);
-
-  // NEW STATE: To track which detail (Humidity, Wind, or Feels Like) to show
   const [activeDetail, setActiveDetail] = useState('feels_like');
 
   const getAllWeather = async () => {
     try {
       if (!city.trim()) {
-        setError('Please enter a city name');
+        setError('Please enter a city or country name.');
+        setWeather(null);
+        setForecast([]);
         return;
       }
+      setError('');
       const weatherRes = await axios.get(`http://localhost:5000/weather/${city}`);
       const forecastRes = await axios.get(`http://localhost:5000/forecast/${city}`);
-      
       setWeather(weatherRes.data);
-      
-      // Logic to filter 5-day forecast
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const dailyData = new Map();
-      forecastRes.data.forEach(item => {
-        const itemDate = new Date(item.dt_txt.replace(/-/g, "/"));
-        const itemDateOnly = new Date(itemDate);
-        itemDateOnly.setHours(0, 0, 0, 0);
-        if (itemDateOnly > today) {
-          const dateString = itemDateOnly.toISOString().split('T')[0];
-          if (!dailyData.has(dateString) || item.dt_txt.includes("12:00:00")) {
-            dailyData.set(dateString, item);
-          }
-        }
-      });
-      setForecast(Array.from(dailyData.values()).slice(0, 5));
-      setError('');
+      processForecastData(forecastRes.data);
+      setActiveDetail('feels_like');
     } catch (err) {
-      setError('City not found or server error');
+      setError('Location not found. Try again!');
       setWeather(null);
       setForecast([]);
     }
   };
 
-  // Function to convert and format temperature display
+  const processForecastData = (forecastList) => {
+    const dailyDataMap = new Map();
+    forecastList.forEach(item => {
+      const dateKey = item.dt_txt.split(' ')[0];
+      if (!dailyDataMap.has(dateKey) || item.dt_txt.includes("12:00:00")) {
+        dailyDataMap.set(dateKey, item);
+      }
+    });
+    setForecast(Array.from(dailyDataMap.values()).slice(1, 6));
+  };
+
   const displayTemp = (temp) => {
     if (isCelsius) return Math.round(temp) + '°C';
-    const fahrenheit = (temp * 9) / 5 + 32;
-    return Math.round(fahrenheit) + '°F';
+    return Math.round((temp * 9) / 5 + 32) + '°F';
   };
 
   const getDayName = (dateString) => {
-    const date = new Date(dateString.replace(/-/g, "/"));
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return new Date(dateString).toLocaleDateString('en-US', { weekday: 'short' });
   };
 
-  const getBackgroundStyle = () => {
-    if (!weather) return 'linear-gradient(to bottom, #bdc3c7, #2c3e50)';
-    const temp = weather.main.temp;
-    if (temp > 30) return 'linear-gradient(to bottom, #ff512f, #f09819)';
-    if (temp > 15) return 'linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff)';
-    return 'linear-gradient(to bottom, #4ca1af, #c4e0e5)';
+  // Styles for a "Glass" look
+  const glassStyle = {
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
   };
 
   return (
-    <div style={{ background: getBackgroundStyle(), minHeight: '100vh', textAlign: 'center', paddingTop: '50px', color: '#fff', paddingBottom: '50px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Weather App Pro</h1>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      background: '#0f172a', // Dark theme base
+      position: 'relative',
+      overflow: 'hidden',
+      fontFamily: "'Poppins', sans-serif"
+    }}>
       
-      {/* Search Section */}
-      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
-        <input 
-          type="text" 
-          placeholder="Enter city..." 
-          value={city} 
-          onChange={(e) => setCity(e.target.value)}
-          style={{ padding: '12px', borderRadius: '25px', border: 'none', width: '250px', outline: 'none' }}
-        />
-        <button onClick={getAllWeather} style={{ padding: '12px 20px', borderRadius: '25px', cursor: 'pointer', border: 'none', fontWeight: 'bold', backgroundColor: '#fff' }}>
-          Search
-        </button>
-        <button onClick={() => setIsCelsius(!isCelsius)} style={{ padding: '12px 15px', borderRadius: '25px', cursor: 'pointer', border: 'none', fontWeight: 'bold', backgroundColor: '#fff', color: '#333' }}>
-          {isCelsius ? '°F' : '°C'}
-        </button>
-      </div>
+      {/* Animated Decorative Blobs for Background */}
+      <div style={{ position: 'absolute', width: '400px', height: '400px', background: '#3b82f6', borderRadius: '50%', top: '-100px', right: '-100px', filter: 'blur(80px)', opacity: 0.4, zIndex: 0 }}></div>
+      <div style={{ position: 'absolute', width: '300px', height: '300px', background: '#9333ea', borderRadius: '50%', bottom: '-50px', left: '-50px', filter: 'blur(80px)', opacity: 0.3, zIndex: 0 }}></div>
 
-      {error && <p style={{ color: '#ffeb3b', fontWeight: 'bold' }}>{error}</p>}
+      <div style={{ width: '90%', maxWidth: '900px', zIndex: 1, padding: '20px' }}>
+        
+        <h1 style={{ color: '#fff', textAlign: 'center', fontSize: '3rem', fontWeight: '800', marginBottom: '30px', textShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+          Weather <span style={{ color: '#3b82f6' }}>App Pro</span>
+        </h1>
 
-      {weather && (
-        <div style={{ padding: '30px', borderRadius: '20px', backgroundColor: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', display: 'inline-block', marginBottom: '20px', minWidth: '350px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
-          <h2>{weather.name}</h2>
-          <p style={{ fontSize: '60px', fontWeight: 'bold', margin: '5px 0' }}>{displayTemp(weather.main.temp)}</p>
-          <p style={{ textTransform: 'capitalize', fontSize: '18px', marginBottom: '20px' }}>{weather.weather[0].description}</p>
-          
-          {/* EXTRA INFO BUTTONS SECTION */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '20px' }}>
-            <button onClick={() => setActiveDetail('feels_like')} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: activeDetail === 'feels_like' ? 1 : 0.6 }}>
-              <div style={{ fontSize: '20px' }}>🌡️</div>
-              <small>Feels Like</small>
-            </button>
-            <button onClick={() => setActiveDetail('humidity')} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: activeDetail === 'humidity' ? 1 : 0.6 }}>
-              <div style={{ fontSize: '20px' }}>💧</div>
-              <small>Humidity</small>
-            </button>
-            <button onClick={() => setActiveDetail('wind')} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: activeDetail === 'wind' ? 1 : 0.6 }}>
-              <div style={{ fontSize: '20px' }}>💨</div>
-              <small>Wind</small>
-            </button>
-          </div>
-
-          {/* DYNAMIC DETAIL DISPLAY */}
-          <div style={{ marginTop: '15px', fontSize: '22px', fontWeight: 'bold' }}>
-            {activeDetail === 'feels_like' && `Feels Like: ${displayTemp(weather.main.feels_like)}`}
-            {activeDetail === 'humidity' && `Humidity: ${weather.main.humidity}%`}
-            {activeDetail === 'wind' && `Wind Speed: ${weather.wind.speed} m/s`}
-          </div>
+        {/* Search Section */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '40px' }}>
+          <input 
+            type="text" 
+            placeholder="Search location..." 
+            value={city} 
+            onChange={(e) => setCity(e.target.value)}
+            style={{ 
+              padding: '15px 25px', borderRadius: '50px', border: 'none', width: '60%', 
+              background: 'rgba(255,255,255,0.9)', fontSize: '1.1rem', outline: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' 
+            }}
+          />
+          <button onClick={getAllWeather} style={{ padding: '15px 30px', borderRadius: '50px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
+            Search
+          </button>
+          <button onClick={() => setIsCelsius(!isCelsius)} style={{ padding: '15px', width: '60px', borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+            {isCelsius ? '°F' : '°C'}
+          </button>
         </div>
-      )}
 
-      {/* Forecast Section */}
-      {forecast.length > 0 && (
-        <div style={{ marginTop: '30px' }}>
-          <h3>Next 5 Days</h3>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', padding: '20px', flexWrap: 'wrap' }}>
-            {forecast.map((item, index) => (
-              <div key={index} style={{ padding: '15px', backgroundColor: 'rgba(255, 255, 255, 0.15)', borderRadius: '15px', minWidth: '110px' }}>
-                <p style={{ fontWeight: 'bold', margin: '0' }}>{getDayName(item.dt_txt)}</p>
-                <p style={{ fontSize: '22px', fontWeight: 'bold', margin: '10px 0' }}>{displayTemp(item.main.temp)}</p>
-                <p style={{ fontSize: '12px', margin: '0' }}>{item.weather[0].main}</p>
+        {/* Main Weather Card */}
+        <div style={{ ...glassStyle, borderRadius: '30px', padding: '50px', textAlign: 'center', color: '#fff' }}>
+          
+          {!weather && !error && (
+            <div style={{ opacity: 0.8 }}>
+              <div style={{ fontSize: '100px', marginBottom: '20px' }}>☁️</div>
+              <h2>Ready to check the weather?</h2>
+              <p>Type a city and hit search to see the magic.</p>
+            </div>
+          )}
+
+          {error && <h3 style={{ color: '#f87171' }}>{error}</h3>}
+
+          {weather && (
+            <>
+              <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>{weather.name}</h2>
+              <h1 style={{ fontSize: '6rem', margin: '0', fontWeight: 'bold' }}>{displayTemp(weather.main.temp)}</h1>
+              <p style={{ fontSize: '1.5rem', textTransform: 'capitalize', color: '#94a3b8' }}>{weather.weather[0].description}</p>
+
+              {/* Extra Details Selector */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px' }}>
+                <div onClick={() => setActiveDetail('feels_like')} style={{ cursor: 'pointer', opacity: activeDetail === 'feels_like' ? 1 : 0.5 }}>
+                  <div style={{ fontSize: '2rem' }}>🌡️</div>
+                  <small>Feels Like</small>
+                </div>
+                <div onClick={() => setActiveDetail('humidity')} style={{ cursor: 'pointer', opacity: activeDetail === 'humidity' ? 1 : 0.5 }}>
+                  <div style={{ fontSize: '2rem' }}>💧</div>
+                  <small>Humidity</small>
+                </div>
+                <div onClick={() => setActiveDetail('wind')} style={{ cursor: 'pointer', opacity: activeDetail === 'wind' ? 1 : 0.5 }}>
+                  <div style={{ fontSize: '2rem' }}>💨</div>
+                  <small>Wind Speed</small>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '20px', fontSize: '1.8rem', fontWeight: '600', color: '#3b82f6' }}>
+                {activeDetail === 'feels_like' && displayTemp(weather.main.feels_like)}
+                {activeDetail === 'humidity' && `${weather.main.humidity}%`}
+                {activeDetail === 'wind' && `${weather.wind.speed} m/s`}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Forecast Section */}
+        {forecast.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', gap: '15px' }}>
+            {forecast.map((day, idx) => (
+              <div key={idx} style={{ ...glassStyle, flex: 1, padding: '20px', borderRadius: '20px', textAlign: 'center', color: '#fff' }}>
+                <p style={{ margin: '0', fontWeight: 'bold', color: '#94a3b8' }}>{getDayName(day.dt_txt)}</p>
+                <h3 style={{ margin: '10px 0' }}>{displayTemp(day.main.temp)}</h3>
+                <small>{day.weather[0].main}</small>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
