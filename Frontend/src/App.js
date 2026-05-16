@@ -8,36 +8,41 @@ function App() {
   const [error, setError] = useState('');
   const [isCelsius, setIsCelsius] = useState(true);
   const [activeDetail, setActiveDetail] = useState('feels_like');
-  const [loading, setLoading] = useState(false); // Loading state for better UX
+  const [loading, setLoading] = useState(false);
 
-  // Feature: Auto-fetch location when app starts
-  useEffect(() => {
-    getLocationWeather();
-  }, []);
-
-  // Function to get current GPS location
+  // Fetch weather based on user's current GPS/Network location
   const getLocationWeather = () => {
     if (navigator.geolocation) {
       setLoading(true);
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const weatherRes = await axios.get(`http://localhost:5000/weather/coords?lat=${latitude}&lon=${longitude}`);
-          const forecastRes = await axios.get(`http://localhost:5000/forecast/coords?lat=${latitude}&lon=${longitude}`);
-          
-          setWeather(weatherRes.data);
-          processForecastData(forecastRes.data);
-          setError('');
-        } catch (err) {
-          setError("Couldn't fetch weather for your location.");
-        }
-        setLoading(false);
-      }, () => {
-        setError("Location permission denied.");
-        setLoading(false);
-      });
+      setError('');
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            const weatherRes = await axios.get(`http://localhost:5000/weather/coords?lat=${latitude}&lon=${longitude}`);
+            const forecastRes = await axios.get(`http://localhost:5000/forecast/coords?lat=${latitude}&lon=${longitude}`);
+            
+            setWeather(weatherRes.data);
+            processForecastData(forecastRes.data);
+            setError('');
+          } catch (err) {
+            setError("Could not fetch weather for your exact coordinates. Please use the search bar!");
+            setWeather(null);
+            setForecast([]);
+          }
+          setLoading(false);
+        },
+        (geoError) => {
+          setError("Location access denied or unavailable. Please type your city name manually!");
+          setLoading(false);
+          setWeather(null);
+          setForecast([]);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
     } else {
-      setError("Geolocation is not supported by your browser.");
+      setError("Geolocation is not supported by this browser.");
     }
   };
 
@@ -111,7 +116,6 @@ function App() {
             Search
           </button>
           
-          {/* NEW: Location Button */}
           <button onClick={getLocationWeather} title="Get Current Location" style={{ padding: '15px', width: '55px', borderRadius: '50%', border: 'none', background: '#10b981', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>
             📍
           </button>
@@ -123,32 +127,42 @@ function App() {
 
         {loading && <p style={{ color: '#fff', textAlign: 'center' }}>Fetching data...</p>}
 
-        {/* Main Weather Card */}
-        <div style={{ ...glassStyle, borderRadius: '30px', padding: '40px', textAlign: 'center', color: '#fff' }}>
-          {error && <h3 style={{ color: '#f87171' }}>{error}</h3>}
+        {/* Main Weather Card Container */}
+        <div style={{ ...glassStyle, borderRadius: '30px', padding: '40px', textAlign: 'center', color: '#fff', marginBottom: '30px' }}>
+          {error && <h3 style={{ color: '#f87171', marginBottom: '10px' }}>{error}</h3>}
           
+          {!weather && !error && (
+            <div style={{ opacity: 0.8, padding: '20px' }}>
+              <div style={{ fontSize: '80px', marginBottom: '20px' }}>🌤️</div>
+              <h2>Welcome to Weather App Pro</h2>
+              <p style={{ color: '#94a3b8' }}>Type your city name or click the location icon to start.</p>
+            </div>
+          )}
+
           {weather && (
             <>
-              <h2 style={{ fontSize: '2.2rem', marginBottom: '10px' }}>{weather.name}</h2>
-              <h1 style={{ fontSize: '5rem', margin: '0', fontWeight: 'bold' }}>{displayTemp(weather.main.temp)}</h1>
-              <p style={{ fontSize: '1.3rem', textTransform: 'capitalize', color: '#94a3b8' }}>{weather.weather[0].description}</p>
+              <h2 style={{ fontSize: '2.5rem', marginBottom: '10px', fontWeight: '700' }}>{weather.name}</h2>
+              <h1 style={{ fontSize: '5.5rem', margin: '10px 0', fontWeight: 'bold' }}>{displayTemp(weather.main.temp)}</h1>
+              <p style={{ fontSize: '1.4rem', textTransform: 'capitalize', color: '#94a3b8', marginBottom: '30px' }}>{weather.weather[0].description}</p>
 
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
-                <div onClick={() => setActiveDetail('feels_like')} style={{ cursor: 'pointer', opacity: activeDetail === 'feels_like' ? 1 : 0.5 }}>
-                  <div style={{ fontSize: '1.8rem' }}>🌡️</div>
-                  <small>Feels Like</small>
+              {/* Weather Extra Details Tabs */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '25px' }}>
+                <div onClick={() => setActiveDetail('feels_like')} style={{ cursor: 'pointer', opacity: activeDetail === 'feels_like' ? 1 : 0.5, transition: '0.3s' }}>
+                  <div style={{ fontSize: '2rem' }}>🌡️</div>
+                  <small style={{ color: '#94a3b8', fontWeight: '600' }}>Feels Like</small>
                 </div>
-                <div onClick={() => setActiveDetail('humidity')} style={{ cursor: 'pointer', opacity: activeDetail === 'humidity' ? 1 : 0.5 }}>
-                  <div style={{ fontSize: '1.8rem' }}>💧</div>
-                  <small>Humidity</small>
+                <div onClick={() => setActiveDetail('humidity')} style={{ cursor: 'pointer', opacity: activeDetail === 'humidity' ? 1 : 0.5, transition: '0.3s' }}>
+                  <div style={{ fontSize: '2rem' }}>💧</div>
+                  <small style={{ color: '#94a3b8', fontWeight: '600' }}>Humidity</small>
                 </div>
-                <div onClick={() => setActiveDetail('wind')} style={{ cursor: 'pointer', opacity: activeDetail === 'wind' ? 1 : 0.5 }}>
-                  <div style={{ fontSize: '1.8rem' }}>💨</div>
-                  <small>Wind Speed</small>
+                <div onClick={() => setActiveDetail('wind')} style={{ cursor: 'pointer', opacity: activeDetail === 'wind' ? 1 : 0.5, transition: '0.3s' }}>
+                  <div style={{ fontSize: '2rem' }}>💨</div>
+                  <small style={{ color: '#94a3b8', fontWeight: '600' }}>Wind Speed</small>
                 </div>
               </div>
 
-              <div style={{ marginTop: '15px', fontSize: '1.6rem', fontWeight: '600', color: '#fff' }}>
+              {/* Dynamic Content Display Area */}
+              <div style={{ marginTop: '20px', fontSize: '1.8rem', fontWeight: '700', color: '#fff' }}>
                 {activeDetail === 'feels_like' && displayTemp(weather.main.feels_like)}
                 {activeDetail === 'humidity' && `${weather.main.humidity}%`}
                 {activeDetail === 'wind' && `${weather.wind.speed} m/s`}
@@ -159,12 +173,12 @@ function App() {
 
         {/* Forecast Section */}
         {forecast.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             {forecast.map((day, idx) => (
               <div key={idx} style={{ ...glassStyle, flex: '1 1 120px', padding: '15px', borderRadius: '20px', textAlign: 'center', color: '#fff' }}>
-                <p style={{ margin: '0', fontSize: '0.9rem', color: '#94a3b8' }}>{getDayName(day.dt_txt)}</p>
-                <h3 style={{ margin: '8px 0' }}>{displayTemp(day.main.temp)}</h3>
-                <small>{day.weather[0].main}</small>
+                <p style={{ margin: '0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>{getDayName(day.dt_txt)}</p>
+                <h3 style={{ margin: '8px 0', fontSize: '1.4rem' }}>{displayTemp(day.main.temp)}</h3>
+                <small style={{ textTransform: 'capitalize' }}>{day.weather[0].main}</small>
               </div>
             ))}
           </div>
