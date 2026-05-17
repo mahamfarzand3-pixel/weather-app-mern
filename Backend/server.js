@@ -8,27 +8,7 @@ app.use(cors());
 
 const API_KEY = process.env.API_KEY;
 
-// Route 1: Search by City Name (Used for the Search Input)
-app.get('/weather/:city', async (req, res) => {
-    try {
-        const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${req.params.city}&appid=${API_KEY}&units=metric`);
-        res.json(response.data);
-    } catch (error) {
-        res.status(404).json({ message: "City not found" });
-    }
-});
-
-// Route 2: Forecast by City Name
-app.get('/forecast/:city', async (req, res) => {
-    try {
-        const response = await axios.get(`https://api.openweathermap.org/data/2.5/forecast?q=${req.params.city}&appid=${API_KEY}&units=metric`);
-        res.json(response.data.list);
-    } catch (error) {
-        res.status(404).json({ message: "Forecast not found" });
-    }
-});
-
-// Route 3: Safe Current Weather by Coords
+// Route 1: Safe Current Weather by Coords (must come before :city route)
 app.get('/weather/coords', async (req, res) => {
     const { lat, lon } = req.query;
     if (!lat || !lon) {
@@ -43,7 +23,7 @@ app.get('/weather/coords', async (req, res) => {
     }
 });
 
-// Route 4: Safe Forecast by Coords
+// Route 2: Safe Forecast by Coords (must come before :city route)
 app.get('/forecast/coords', async (req, res) => {
     const { lat, lon } = req.query;
     if (!lat || !lon) {
@@ -55,6 +35,26 @@ app.get('/forecast/coords', async (req, res) => {
     } catch (error) {
         console.error("OWM Coords Forecast Error:", error.message);
         res.status(504).json({ error: "Could not find forecast for these coordinates" });
+    }
+});
+
+// Route 3: Search by City Name (Used for the Search Input)
+app.get('/weather/:city', async (req, res) => {
+    try {
+        const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${req.params.city}&appid=${API_KEY}&units=metric`);
+        res.json(response.data);
+    } catch (error) {
+        res.status(404).json({ message: "City not found" });
+    }
+});
+
+// Route 4: Forecast by City Name
+app.get('/forecast/:city', async (req, res) => {
+    try {
+        const response = await axios.get(`https://api.openweathermap.org/data/2.5/forecast?q=${req.params.city}&appid=${API_KEY}&units=metric`);
+        res.json(response.data.list);
+    } catch (error) {
+        res.status(404).json({ message: "Forecast not found" });
     }
 });
 
